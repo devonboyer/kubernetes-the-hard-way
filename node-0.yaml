@@ -1,0 +1,48 @@
+images:
+- location: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.img"
+  arch: "x86_64"
+- location: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-arm64.img"
+  arch: "aarch64"
+
+cpus: 2
+memory: "2GiB"
+disk: "20GiB"
+
+ssh:
+  localPort: 63790
+  loadDotSSHPubKeys: true
+
+networks:
+- lima: shared
+
+portForwards:
+- guestPortRange: [30000, 32767]
+  hostPortRange: [30000, 32767]
+  hostIP:  "0.0.0.0"
+
+provision:
+- mode: system
+  script: |
+    #!/bin/bash
+    apt-get update
+    apt-get install -y curl wget socat conntrack ipset
+- mode: system
+  script: |
+    #!/bin/bash
+    # Enable root login via SSH with key authentication only
+    sudo sed -i \
+      's/^#*PermitRootLogin.*/PermitRootLogin yes/' \
+      /etc/ssh/sshd_config
+    sudo sed -i \
+      's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' \
+      /etc/ssh/sshd_config
+
+    # Copy authorized keys to root
+    mkdir -p /root/.ssh
+    cp /home/ubuntu/.ssh/authorized_keys /root/.ssh/
+    chown -R root:root /root/.ssh
+    chmod 700 /root/.ssh
+    chmod 600 /root/.ssh/authorized_keys
+    
+    # Restart SSH service
+    sudo systemctl restart sshd
